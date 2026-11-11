@@ -16202,12 +16202,16 @@ inner join pq on true
 			"     │   │       ├─ cacheable: false\n" +
 			"     │   │       ├─ alias-string: select i from mytable where i = mt.i and i > 2\n" +
 			"     │   │       └─ Filter\n" +
-			"     │   │           ├─ Eq\n" +
-			"     │   │           │   ├─ mytable.i:2!null\n" +
-			"     │   │           │   └─ mt.i:0!null\n" +
+			"     │   │           ├─ AND\n" +
+			"     │   │           │   ├─ Eq\n" +
+			"     │   │           │   │   ├─ mytable.i:2!null\n" +
+			"     │   │           │   │   └─ mt.i:0!null\n" +
+			"     │   │           │   └─ GreaterThan\n" +
+			"     │   │           │       ├─ mytable.i:2!null\n" +
+			"     │   │           │       └─ 2 (bigint)\n" +
 			"     │   │           └─ IndexedTableAccess(mytable)\n" +
 			"     │   │               ├─ index: [mytable.i]\n" +
-			"     │   │               ├─ static: [{(2, ∞)}]\n" +
+			"     │   │               ├─ keys: [mt.i:0!null]\n" +
 			"     │   │               ├─ colSet: (3)\n" +
 			"     │   │               ├─ tableId: 2\n" +
 			"     │   │               └─ Table\n" +
@@ -16243,11 +16247,11 @@ inner join pq on true
 			"     ├─ ((NOT(Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       ├─ ((mytable.i = mt.i) AND (mytable.i > 2))\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(2, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           ├─ columns: [i]\n" +
+			"     │           └─ keys: mt.i\n" +
 			"     │   IS NULL)) AND (NOT(Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Filter\n" +
@@ -16267,11 +16271,11 @@ inner join pq on true
 			"     ├─ ((NOT(Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
+			"     │       ├─ ((mytable.i = mt.i) AND (mytable.i > 2))\n" +
 			"     │       └─ IndexedTableAccess(mytable)\n" +
 			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(2, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
+			"     │           ├─ columns: [i]\n" +
+			"     │           └─ keys: mt.i\n" +
 			"     │   IS NULL)) AND (NOT(Subquery\n" +
 			"     │   ├─ cacheable: false\n" +
 			"     │   └─ Filter\n" +

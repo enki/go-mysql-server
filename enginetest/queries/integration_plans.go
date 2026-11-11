@@ -20079,13 +20079,16 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │       │   └─ Project\n" +
 			"     │       │       ├─ columns: [nd_for_id.id:84!null]\n" +
 			"     │       │       └─ Filter\n" +
-			"     │       │           ├─ Eq\n" +
-			"     │       │           │   ├─ nd_for_id.FGG57:85\n" +
-			"     │       │           │   └─ umf.FGG57:2\n" +
+			"     │       │           ├─ AND\n" +
+			"     │       │           │   ├─ NOT\n" +
+			"     │       │           │   │   └─ nd_for_id.FGG57:85 IS NULL\n" +
+			"     │       │           │   └─ Eq\n" +
+			"     │       │           │       ├─ nd_for_id.FGG57:85\n" +
+			"     │       │           │       └─ umf.FGG57:2\n" +
 			"     │       │           └─ TableAlias(nd_for_id)\n" +
 			"     │       │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │       │                   ├─ index: [E2I7U.FGG57]\n" +
-			"     │       │                   ├─ static: [{(NULL, ∞)}]\n" +
+			"     │       │                   ├─ keys: [umf.FGG57:2]\n" +
 			"     │       │                   ├─ colSet: (176,182)\n" +
 			"     │       │                   ├─ tableId: 10\n" +
 			"     │       │                   └─ Table\n" +
@@ -20177,13 +20180,16 @@ INNER JOIN THNTS bs ON cla.id = bs.IXUXU`,
 			"     │           │   └─ Project\n" +
 			"     │           │       ├─ columns: [nd_for_id.id:67!null]\n" +
 			"     │           │       └─ Filter\n" +
-			"     │           │           ├─ Eq\n" +
-			"     │           │           │   ├─ nd_for_id.FGG57:68\n" +
-			"     │           │           │   └─ umf.FGG57:2\n" +
+			"     │           │           ├─ AND\n" +
+			"     │           │           │   ├─ NOT\n" +
+			"     │           │           │   │   └─ nd_for_id.FGG57:68 IS NULL\n" +
+			"     │           │           │   └─ Eq\n" +
+			"     │           │           │       ├─ nd_for_id.FGG57:68\n" +
+			"     │           │           │       └─ umf.FGG57:2\n" +
 			"     │           │           └─ TableAlias(nd_for_id)\n" +
 			"     │           │               └─ IndexedTableAccess(E2I7U)\n" +
 			"     │           │                   ├─ index: [E2I7U.FGG57]\n" +
-			"     │           │                   ├─ static: [{(NULL, ∞)}]\n" +
+			"     │           │                   ├─ keys: [umf.FGG57:2]\n" +
 			"     │           │                   ├─ colSet: (176,182)\n" +
 			"     │           │                   ├─ tableId: 10\n" +
 			"     │           │                   └─ Table\n" +
