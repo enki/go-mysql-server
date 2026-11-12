@@ -4251,6 +4251,32 @@ end;
 			},
 		},
 	},
+	{
+		Name: "a trigger dropped and created again on another table and event fires only where it now is",
+		SetUpScript: []string{
+			"create table a (id int primary key)",
+			"create table b (id int primary key)",
+			"create table log (n int primary key auto_increment, msg varchar(40))",
+			"create trigger moved after insert on a for each row insert into log (msg) values ('a insert')",
+			"insert into a values (1)",
+			"drop trigger moved",
+			"insert into a values (2)",
+			"create trigger moved after update on b for each row insert into log (msg) values ('b update')",
+			"insert into a values (3)",
+			"insert into b values (1)",
+			"update b set id = 2",
+			"drop trigger moved",
+			"update b set id = 3",
+			"create trigger moved after insert on a for each row insert into log (msg) values ('a insert')",
+			"insert into a values (4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select msg from log order by n",
+				Expected: []sql.Row{{"a insert"}, {"b update"}, {"a insert"}},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

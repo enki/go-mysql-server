@@ -16,7 +16,9 @@ package analyzer
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -31,6 +33,52 @@ import (
 // but we allow 96 characters to avoid breaking customers who were relying on the previous behavior where we didn't
 // check the length.
 const maxTriggerNameLength = 96
+
+// triggerTarget is the table (lower case) and the event a stored CREATE TRIGGER statement names, or the error parsing
+// it gave. isTrigger is false for a statement that parses but is not a CREATE TRIGGER.
+type triggerTarget struct {
+	table, event string
+	isTrigger    bool
+	err          error
+}
+
+type triggerTargetKey struct {
+	sqlMode, statement string
+}
+
+// maxTriggerTargets bounds triggerTargets; past it the memo starts over.
+const maxTriggerTargets = 1 << 14
+
+// triggerTargets remembers the target of each stored trigger statement under the SQL mode it was stored with. Every
+// INSERT, UPDATE and DELETE reads the target of every trigger of its database to find the ones on its tables, so
+// without it a write repeats work proportional to all the database's triggers: resolving the SQL mode, the parse
+// tree's cache key and its lookup. A target depends only on the statement text and the parser options its SQL mode
+// selects, so the memo is shared by every session and never goes stale: a changed trigger is a different key.
+var triggerTargets = struct {
+	sync.Mutex
+	m map[triggerTargetKey]triggerTarget
+}{m: map[triggerTargetKey]triggerTarget{}}
+
+// storedTriggerTarget returns the target of |trigger|, parsing it with |b| the first time.
+func storedTriggerTarget(b *planbuilder.Builder, trigger sql.TriggerDefinition) triggerTarget {
+	key := triggerTargetKey{sqlMode: trigger.SqlMode, statement: trigger.CreateStatement}
+	triggerTargets.Lock()
+	target, ok := triggerTargets.m[key]
+	triggerTargets.Unlock()
+	if ok {
+		return target
+	}
+	b.SetParserOptions(sql.NewSqlModeFromString(trigger.SqlMode).ParserOptions())
+	table, event, isTrigger, err := b.TriggerTarget(trigger.CreateStatement)
+	target = triggerTarget{table: strings.ToLower(table), event: event, isTrigger: isTrigger, err: err}
+	triggerTargets.Lock()
+	if len(triggerTargets.m) >= maxTriggerTargets {
+		clear(triggerTargets.m)
+	}
+	triggerTargets.m[key] = target
+	triggerTargets.Unlock()
+	return target
+}
 
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
@@ -220,17 +268,21 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		fires := func(event string) bool {
 			return triggerEventsMatch(triggerEvent, event) || (onDuplicateUpdate && triggerEventsMatch(plan.UpdateTrigger, event))
 		}
+		lowerAffected := make([]string, len(affectedTables))
+		for i, t := range affectedTables {
+			lowerAffected[i] = strings.ToLower(t)
+		}
 		for _, trigger := range triggers {
+			// Building a trigger resolves its table, which costs far more than parsing it, so the triggers of other
+			// tables and events are skipped on their targets, which are remembered across statements. A trigger that
+			// doesn't parse is skipped, as the build below would skip it.
+			target := storedTriggerTarget(b, trigger)
+			if target.err != nil || target.isTrigger && (!slices.Contains(lowerAffected, target.table) || !fires(target.event)) {
+				continue
+			}
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
-			// Building a trigger resolves its table, which costs far more than parsing it, so the triggers of other
-			// tables and events are skipped on their parse trees. A trigger that doesn't parse is skipped, as the build
-			// below would skip it.
-			table, event, isTrigger, err := b.TriggerTarget(trigger.CreateStatement)
-			if err != nil || isTrigger && (!stringContains(affectedTables, table) || !fires(event)) {
-				continue
-			}
 			b.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
